@@ -110,7 +110,10 @@ export default function Lesson({
               style={{ fontSize: "3rem", lineHeight: 1 }}
             />
             <span style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-              <strong>as in “{l.keyword}”</strong>
+              <span>
+                <strong>{l.name}</strong>
+                <span style={{ color: "#888" }}> · as in “{l.keyword}”</span>
+              </span>
               <span style={{ fontSize: "0.9rem", color: "#555" }}>
                 <Mnemonic text={l.mnemonic} />
               </span>

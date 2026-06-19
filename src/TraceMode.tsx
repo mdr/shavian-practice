@@ -14,6 +14,7 @@ interface Item {
   ghost: string;
   label: string;
   keyword?: string;
+  name?: string;
 }
 
 export default function TraceMode({
@@ -27,6 +28,7 @@ export default function TraceMode({
       ghost: l.glyph,
       label: l.glyph,
       keyword: l.keyword,
+      name: l.name,
     }));
     const words: Item[] = practiceWords(lesson)
       .slice(0, 6)
@@ -46,7 +48,7 @@ export default function TraceMode({
         <span style={{ color: "#555" }}>
           {item.keyword ? (
             <>
-              as in <strong>{item.keyword}</strong>
+              <strong>{item.name}</strong> · as in <strong>{item.keyword}</strong>
             </>
           ) : (
             <>

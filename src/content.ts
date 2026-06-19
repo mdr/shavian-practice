@@ -9,6 +9,8 @@ export interface Letter {
 
 export interface NewLetter {
   glyph: string;
+  /** Canonical Shavian letter name (the Unicode name), e.g. "So", "If". */
+  name: string;
   keyword: string;
   mnemonic: string;
 }
