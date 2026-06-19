@@ -70,10 +70,10 @@ export default function RecallMode({
 
       <div
         style={{
-          height: 140,
+          height: 72,
           background: "#fff",
           border: "1px solid var(--rule)",
-          borderRadius: 12,
+          borderRadius: 10,
           overflow: "hidden",
         }}
       >
