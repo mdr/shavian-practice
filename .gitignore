@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.direnv/
+
+# generated content bundle
+src/content/lessons.json
+
+# TypeScript incremental build info
+*.tsbuildinfo

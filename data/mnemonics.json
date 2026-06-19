@@ -1,0 +1,60 @@
+{
+  "_comment": "Fresh one-line mnemonics written for this project (NOT copied from shavian.school). Keyed by glyph. Shape claims are limited to ones the source lessons state outright; pairing claims follow Shavian's design rule (tall = unvoiced, deep = voiced partner).",
+
+  "𐑕": "Looks like a Latin S — the /s/ in *see*.",
+  "𐑦": "A dotless Latin i — the short /ɪ/ in *in*.",
+  "𐑰": "A stretched 𐑦 snapped at the waist — the long /iː/ in *eve*.",
+  "𐑞": "Voiced 'th' as in *thou*; the deep partner of 𐑔.",
+  "𐑟": "𐑕 reversed and dropped low — voiced /z/, the deep partner of 𐑕.",
+  "𐑵": "The long /uː/ in *ooze*.",
+
+  "𐑐": "A tall hook — unvoiced /p/ as in *pin*.",
+  "𐑤": "The /l/ in *lamb*.",
+  "𐑚": "𐑐 turned upside-down — voiced /b/, dropping deep.",
+  "𐑧": "The bottom curve of a Latin e — the short /ɛ/ in *edge*.",
+
+  "𐑱": "The long /eɪ/ glide in *aim*.",
+  "𐑥": "The /m/ in *me*.",
+  "𐑒": "Tall — unvoiced /k/ as in *key*.",
+  "𐑨": "The short /æ/ in *ash*.",
+  "𐑣": "The /h/ in *who*.",
+
+  "𐑲": "The /aɪ/ diphthong in *eye*.",
+  "𐑯": "The /n/ in *now*.",
+  "𐑑": "Tall — unvoiced /t/ as in *tan*.",
+  "𐑛": "Deep partner of 𐑑 — voiced /d/ as in *done*.",
+  "𐑮": "The /r/ in *roe*.",
+
+  "𐑓": "Tall — unvoiced /f/ as in *fay*.",
+  "𐑝": "Deep partner of 𐑓 — voiced /v/ as in *vie*.",
+  "𐑩": "The neutral 'uh' (schwa) in *ago*.",
+  "𐑳": "The short /ʌ/ in *up*.",
+  "𐑼": "The unstressed 'er' ending in *array*.",
+
+  "𐑪": "The short /ɒ/ in *on*.",
+  "𐑢": "The /w/ in *way*.",
+  "𐑴": "The long /oʊ/ in *oath*.",
+  "𐑘": "The /j/ glide in *yen*.",
+  "𐑖": "Tall — unvoiced 'sh' as in *shy*.",
+  "𐑿": "The /juː/ glide in *yule*.",
+
+  "𐑜": "A deep version of 𐑒 — voiced /g/ as in *gill*.",
+  "𐑻": "The stressed 'ur' in *early*.",
+  "𐑷": "The long /ɔː/ in *ought*.",
+
+  "𐑔": "Tall — unvoiced 'th' as in *thorn*; partner of 𐑞.",
+  "𐑗": "𐑑 and 𐑖 fused — the 'ch' in *cha*.",
+  "𐑠": "Deep partner of 𐑖 — voiced 'zh' as in *measure*.",
+  "𐑬": "The /aʊ/ diphthong in *ounce*.",
+  "𐑹": "The 'or' sound in *aura*.",
+
+  "𐑭": "The long /ɑː/ in *alms*.",
+  "𐑺": "𐑧 joined to 𐑮 — the 'air' sound; only before r.",
+  "𐑫": "The short /ʊ/ in *oomph* (as in *foot*).",
+  "𐑾": "The 'ee-uh' glide in *ian*.",
+
+  "𐑸": "𐑭 joined to 𐑮 — the 'ar' sound in *aria*.",
+  "𐑽": "The 'eer' sound in *eerie*.",
+  "𐑶": "The /ɔɪ/ diphthong in *oil*.",
+  "𐑡": "Deep partner of 𐑗 — voiced /dʒ/ as in *joy*."
+}

@@ -1,0 +1,13 @@
+/* Noto Sans Shavian (SIL OFL) — see src/assets/NotoSansShavian-OFL.txt.
+   iOS Safari has no built-in Shavian coverage, so we must self-host. */
+@font-face {
+  font-family: "Noto Sans Shavian";
+  src: url("./assets/NotoSansShavian-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.shavian {
+  font-family: "Noto Sans Shavian", sans-serif;
+}
