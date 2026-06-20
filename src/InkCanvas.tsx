@@ -13,7 +13,6 @@ import { classOf, CLASS_COLOR } from "./letterClass.ts";
 export interface InkCanvasHandle {
   undo: () => void;
   clear: () => void;
-  isEmpty: () => boolean;
 }
 
 interface InkCanvasProps {
@@ -63,10 +62,9 @@ function outlineToPath2D(outline: number[][]): Path2D {
 /**
  * A ruled writing surface that captures Apple Pencil ink.
  *
- * Three guidelines (faint ascender ceiling, dashed x-height, solid baseline)
- * read as clean ruled paper when stacked; the unruled space below the baseline
- * is the descender zone for deep letters. An optional `ghost` renders faint
- * Shavian to trace over, coloured per glyph by tall/deep/short class.
+ * Four guidelines (faint ascender ceiling, dashed x-height, solid baseline, and
+ * a faint deep line) are placed from the font's measured metrics; the ghost is
+ * sized to match and coloured per glyph by tall/deep/short class.
  */
 const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
   ({ allowTouch = false, ghost, ghostRepeat = false, onActive }, ref) => {
@@ -86,9 +84,9 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
       ctx.clearRect(0, 0, w, h);
 
       // --- guideline + glyph metrics ---
-      // The baseline is fixed; the x-height and tall-ceiling lines are placed
-      // from the FONT's real metrics (measured below) so they actually coincide
-      // with where short and tall glyphs sit — and the ghost is sized to match.
+      // The baseline is fixed; the other lines are placed from the FONT's real
+      // metrics (measured below) so they coincide with where glyphs sit — and
+      // the ghost is sized to match.
       const baseline = h * 0.72;
       let top = h * 0.22; // fallback until the font has loaded
       let xLine = h * 0.46;
@@ -121,8 +119,6 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
         ) {
           const above = baseline; // room above the baseline
           const below = h - baseline; // descender room below
-          // largest size that keeps tall letters above the row and deep letters
-          // inside it, with a little breathing room
           fontSize = Math.min(above / tallR, below / deepR) * 0.9;
           top = baseline - fontSize * tallR;
           xLine = baseline - fontSize * shortR;
@@ -219,9 +215,7 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
     }, []);
 
     // Two-finger tap = undo (the iPadOS convention). Tracked via POINTER events
-    // counting only finger ("touch") pointers — never the Pencil. (The Pencil
-    // also emits touch events, so a TouchEvent-based count would spuriously read
-    // 2 between two quick pen strokes and cancel the second one.)
+    // counting only finger ("touch") pointers — never the Pencil.
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -264,8 +258,6 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
         currentRef.current = null;
         draw();
       },
-      isEmpty: () =>
-        strokesRef.current.length === 0 && currentRef.current === null,
     }));
 
     useEffect(() => {
@@ -313,15 +305,25 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
         draw();
       };
 
+      // iPadOS Scribble swallows the pointer events of rapid Apple Pencil
+      // strokes (the second of two quick strokes goes missing). The documented
+      // workaround is a NON-PASSIVE touchmove listener that preventDefaults,
+      // which stops Scribble from hijacking the stroke. Counterintuitive for a
+      // stylus, but it's the only web-side fix short of disabling Scribble in
+      // iOS settings. https://mikepk.com/2020/10/iOS-safari-scribble-bug/
+      const onTouchMove = (e: TouchEvent) => e.preventDefault();
+
       canvas.addEventListener("pointerdown", onDown);
       canvas.addEventListener("pointermove", onMove);
       canvas.addEventListener("pointerup", onUp);
       canvas.addEventListener("pointercancel", onUp);
+      canvas.addEventListener("touchmove", onTouchMove, { passive: false });
       return () => {
         canvas.removeEventListener("pointerdown", onDown);
         canvas.removeEventListener("pointermove", onMove);
         canvas.removeEventListener("pointerup", onUp);
         canvas.removeEventListener("pointercancel", onUp);
+        canvas.removeEventListener("touchmove", onTouchMove);
       };
     }, [allowTouch, draw, onActive]);
 
