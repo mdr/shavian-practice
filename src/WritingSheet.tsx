@@ -73,8 +73,13 @@ export default function WritingSheet({
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-        <button onClick={undo}>Undo</button>
+        <button onClick={undo} title="Undo last stroke (or two-finger tap)">
+          Undo
+        </button>
         <button onClick={clearAll}>Clear</button>
+        <span style={{ fontSize: "0.72rem", color: "#aaa", alignSelf: "center" }}>
+          two-finger tap = undo
+        </span>
         <span style={{ flex: 1 }} />
         {actions}
       </div>

@@ -107,8 +107,16 @@ export default function RecallMode({
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-        <button onClick={() => canvasRef.current?.undo()}>Undo</button>
+        <button
+          onClick={() => canvasRef.current?.undo()}
+          title="Undo last stroke (or two-finger tap)"
+        >
+          Undo
+        </button>
         <button onClick={() => canvasRef.current?.clear()}>Clear</button>
+        <span style={{ fontSize: "0.72rem", color: "#aaa", alignSelf: "center" }}>
+          two-finger tap = undo
+        </span>
         <span style={{ flex: 1 }} />
         {!revealed ? (
           <button

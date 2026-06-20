@@ -209,15 +209,47 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
       return () => ro.disconnect();
     }, [resize]);
 
+    const doUndo = useCallback(() => {
+      strokesRef.current.pop();
+      draw();
+    }, [draw]);
+
     useEffect(() => {
       ensureFont().then(() => setFontReady(true));
     }, []);
 
+    // Two-finger tap = undo (the iPadOS convention). Works in pen-only mode
+    // since touches never draw there; in finger mode a second finger cancels
+    // the nascent stroke so the tap doesn't leave a mark.
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      let active = false;
+      let start = 0;
+      const onStart = (e: TouchEvent) => {
+        if (e.touches.length === 2) {
+          active = true;
+          start = performance.now();
+          currentRef.current = null;
+          draw();
+        }
+      };
+      const onEnd = (e: TouchEvent) => {
+        if (active && e.touches.length === 0) {
+          if (performance.now() - start < 400) doUndo();
+          active = false;
+        }
+      };
+      canvas.addEventListener("touchstart", onStart, { passive: true });
+      canvas.addEventListener("touchend", onEnd, { passive: true });
+      return () => {
+        canvas.removeEventListener("touchstart", onStart);
+        canvas.removeEventListener("touchend", onEnd);
+      };
+    }, [doUndo, draw]);
+
     useImperativeHandle(ref, () => ({
-      undo: () => {
-        strokesRef.current.pop();
-        draw();
-      },
+      undo: doUndo,
       clear: () => {
         strokesRef.current = [];
         currentRef.current = null;
