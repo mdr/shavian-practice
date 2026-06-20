@@ -30,7 +30,12 @@ export default function TraceMode({
       keyword: l.keyword,
       name: l.name,
     }));
-    const words: Item[] = practiceWords(lesson)
+    const pool = [...practiceWords(lesson)];
+    for (let k = pool.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [pool[k], pool[j]] = [pool[j], pool[k]];
+    }
+    const words: Item[] = pool
       .slice(0, 6)
       .map((w) => ({ ghost: w.shavian, label: w.english }));
     return [...letters, ...words];

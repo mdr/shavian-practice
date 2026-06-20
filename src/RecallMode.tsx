@@ -21,10 +21,17 @@ export default function RecallMode({
 }: RecallModeProps) {
   const canvasRef = useRef<InkCanvasHandle>(null);
 
-  const words = useMemo<Word[]>(
-    () => practiceWords(lesson).slice(0, SESSION_SIZE),
-    [lesson],
-  );
+  // Draw a fresh, shuffled session from the whole gated pool each time, so
+  // every word (curated seeds + frequency-ranked generated) is reachable and
+  // sessions vary — rather than always replaying the first 12.
+  const words = useMemo<Word[]>(() => {
+    const pool = [...practiceWords(lesson)];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, SESSION_SIZE);
+  }, [lesson]);
 
   const [i, setI] = useState(0);
   const [revealed, setRevealed] = useState(false);
