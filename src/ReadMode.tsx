@@ -38,6 +38,24 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
   const [i, setI] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [tally, setTally] = useState({ got: 0, missed: 0 });
+  const [audioOn, setAudioOn] = useState(() => {
+    try {
+      return localStorage.getItem("shavian-practice.audio") !== "off";
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleAudio = () =>
+    setAudioOn((on) => {
+      const next = !on;
+      try {
+        localStorage.setItem("shavian-practice.audio", next ? "on" : "off");
+      } catch {
+        /* storage may be unavailable */
+      }
+      return next;
+    });
 
   const word = words[i];
   const finished = i >= words.length;
@@ -69,14 +87,25 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
 
   const reveal = () => {
     setRevealed(true);
-    speak(answers[0]); // homophones share pronunciation, so any spelling works
+    // homophones share pronunciation, so any spelling works
+    if (audioOn) speak(answers[0]);
   };
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem", padding: "0.75rem", minHeight: 0 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: "1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
         <span style={{ color: "#777" }}>read this:</span>
-        <span style={{ marginLeft: "auto", color: "#999", fontSize: "0.85rem" }}>
+        <span style={{ flex: 1 }} />
+        {canSpeak() && (
+          <button
+            onClick={toggleAudio}
+            title={audioOn ? "Disable audio" : "Enable audio"}
+            style={{ fontSize: "0.85rem", padding: "0.3rem 0.6rem" }}
+          >
+            {audioOn ? "🔊 audio on" : "🔇 audio off"}
+          </button>
+        )}
+        <span style={{ color: "#999", fontSize: "0.85rem" }}>
           {i + 1} / {words.length}
         </span>
       </div>
@@ -102,7 +131,7 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
             <span style={{ fontSize: "1.6rem", color: "var(--ink)" }}>
               {answers.join(" / ")}
             </span>
-            {canSpeak() && (
+            {canSpeak() && audioOn && (
               <button
                 onClick={() => speak(answers[0])}
                 title="Hear it again"
