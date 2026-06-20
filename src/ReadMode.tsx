@@ -3,7 +3,13 @@ import ShavianText from "./ShavianText.tsx";
 import type { Lesson, Word } from "./content.ts";
 import { practiceWords } from "./content.ts";
 import { speak, canSpeak } from "./speak.ts";
-import { speakKokoro, unlockAudio, onKokoroProgress, type Progress } from "./kokoro.ts";
+import {
+  speakKokoro,
+  unlockAudio,
+  onKokoroProgress,
+  isIOS,
+  type Progress,
+} from "./kokoro.ts";
 
 interface ReadModeProps {
   lesson: Lesson;
@@ -41,6 +47,8 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
   const [tally, setTally] = useState({ got: 0, missed: 0 });
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [prog, setProg] = useState<Progress | null>(null);
+  // Kokoro's WASM inference hangs on iOS; use the system voice there.
+  const useKokoro = !isIOS();
   const [audioOn, setAudioOn] = useState(() => {
     try {
       return localStorage.getItem("shavian-practice.audio") !== "off";
@@ -92,6 +100,10 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
 
   // homophones share pronunciation, so any spelling works
   const playWord = async (text: string) => {
+    if (!useKokoro) {
+      speak(text); // iOS: system voice (Kokoro inference doesn't run there)
+      return;
+    }
     try {
       setVoiceLoading(true);
       await speakKokoro(text);
