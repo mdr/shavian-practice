@@ -1,23 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./fonts.css";
 import { getLesson } from "./content.ts";
 import * as P from "./progress.ts";
+import { useHashRoute } from "./route.ts";
 import Home from "./Home.tsx";
 import Lesson from "./Lesson.tsx";
 
-type View = { type: "home" } | { type: "lesson"; id: number };
-
 export default function App() {
-  const [view, setView] = useState<View>({ type: "home" });
+  const [route, navigate] = useHashRoute();
   const [progress, setProgress] = useState<P.Progress>(() => P.load());
   const [allowTouch, setAllowTouch] = useState(false);
 
-  const openLesson = (id: number) => {
-    setProgress((p) => P.markVisited(p, id));
-    setView({ type: "lesson", id });
-  };
+  const lesson = route.name === "lesson" ? getLesson(route.id) : undefined;
 
-  const lesson = view.type === "lesson" ? getLesson(view.id) : undefined;
+  // Mark a lesson visited whenever we land on it (including via back/forward or
+  // a deep link), not only when opened from the home list.
+  useEffect(() => {
+    if (lesson) setProgress((p) => P.markVisited(p, lesson.id));
+  }, [lesson?.id]);
 
   return (
     <>
@@ -31,14 +31,12 @@ export default function App() {
         }}
       >
         <button
-          onClick={() => setView({ type: "home" })}
+          onClick={() => navigate({ name: "home" })}
           style={{ border: "none", background: "none", padding: 0, cursor: "pointer" }}
         >
           <strong>Shavian Practice</strong>
         </button>
-        {lesson && (
-          <span style={{ color: "#999" }}>› {lesson.title}</span>
-        )}
+        {lesson && <span style={{ color: "#999" }}>› {lesson.title}</span>}
         <span style={{ flex: 1 }} />
         <label style={{ fontSize: "0.85rem", display: "flex", gap: "0.35rem", alignItems: "center" }}>
           <input
@@ -50,16 +48,19 @@ export default function App() {
         </label>
       </header>
 
-      {view.type === "home" || !lesson ? (
-        <Home progress={progress} onOpen={openLesson} />
+      {route.name === "home" || !lesson ? (
+        <Home
+          progress={progress}
+          onOpen={(id) => navigate({ name: "lesson", id, mode: "intro" })}
+        />
       ) : (
         <Lesson
           lesson={lesson}
           allowTouch={allowTouch}
+          mode={route.mode}
+          onMode={(mode) => navigate({ name: "lesson", id: lesson.id, mode })}
           onTraced={() => setProgress((p) => P.markTraced(p, lesson.id))}
-          onRecall={(got) =>
-            setProgress((p) => P.recordRecall(p, lesson.id, got))
-          }
+          onRecall={(got) => setProgress((p) => P.recordRecall(p, lesson.id, got))}
         />
       )}
     </>

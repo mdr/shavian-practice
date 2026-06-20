@@ -1,7 +1,9 @@
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import type { Lesson as LessonData } from "./content.ts";
+import type { Mode } from "./route.ts";
 import TraceMode from "./TraceMode.tsx";
 import RecallMode from "./RecallMode.tsx";
+import ReadMode from "./ReadMode.tsx";
 import ShavianText from "./ShavianText.tsx";
 import { CLASS_COLOR } from "./letterClass.ts";
 
@@ -26,11 +28,11 @@ function ClassLegend() {
 interface LessonProps {
   lesson: LessonData;
   allowTouch: boolean;
+  mode: Mode;
+  onMode: (mode: Mode) => void;
   onTraced: () => void;
   onRecall: (got: boolean) => void;
 }
-
-type Sub = "intro" | "trace" | "recall";
 
 /** Render *emphasis* in the hand-written mnemonics without a markdown dep. */
 function Mnemonic({ text }: { text: string }) {
@@ -50,33 +52,37 @@ function Mnemonic({ text }: { text: string }) {
 export default function Lesson({
   lesson,
   allowTouch,
+  mode,
+  onMode,
   onTraced,
   onRecall,
 }: LessonProps) {
-  const [sub, setSub] = useState<Sub>("intro");
-
-  if (sub === "trace") {
+  if (mode === "trace") {
     return (
       <TraceMode
         lesson={lesson}
         allowTouch={allowTouch}
         onDone={() => {
           onTraced();
-          setSub("intro");
+          onMode("intro");
         }}
       />
     );
   }
 
-  if (sub === "recall") {
+  if (mode === "recall") {
     return (
       <RecallMode
         lesson={lesson}
         allowTouch={allowTouch}
         onRecord={onRecall}
-        onDone={() => setSub("intro")}
+        onDone={() => onMode("intro")}
       />
     );
+  }
+
+  if (mode === "read") {
+    return <ReadMode lesson={lesson} onDone={() => onMode("intro")} />;
   }
 
   return (
@@ -124,16 +130,22 @@ export default function Lesson({
 
       <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}>
         <button
-          onClick={() => setSub("trace")}
+          onClick={() => onMode("trace")}
           style={{ borderColor: "var(--accent)" }}
         >
           ✏️ Trace the shapes
         </button>
         <button
-          onClick={() => setSub("recall")}
+          onClick={() => onMode("recall")}
           style={{ borderColor: "var(--accent)" }}
         >
           🧠 Practice words
+        </button>
+        <button
+          onClick={() => onMode("read")}
+          style={{ borderColor: "var(--accent)" }}
+        >
+          📖 Read words
         </button>
       </div>
     </main>
