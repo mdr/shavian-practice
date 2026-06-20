@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ShavianText from "./ShavianText.tsx";
 import type { Lesson, Word } from "./content.ts";
 import { practiceWords } from "./content.ts";
 import { speak, canSpeak } from "./speak.ts";
-import { speakKokoro, unlockAudio } from "./kokoro.ts";
+import { speakKokoro, unlockAudio, onKokoroProgress, type Progress } from "./kokoro.ts";
 
 interface ReadModeProps {
   lesson: Lesson;
@@ -40,6 +40,7 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
   const [revealed, setRevealed] = useState(false);
   const [tally, setTally] = useState({ got: 0, missed: 0 });
   const [voiceLoading, setVoiceLoading] = useState(false);
+  const [prog, setProg] = useState<Progress | null>(null);
   const [audioOn, setAudioOn] = useState(() => {
     try {
       return localStorage.getItem("shavian-practice.audio") !== "off";
@@ -47,6 +48,8 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
       return true;
     }
   });
+
+  useEffect(() => onKokoroProgress(setProg), []);
 
   const toggleAudio = () =>
     setAudioOn((on) => {
@@ -97,6 +100,36 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
     } finally {
       setVoiceLoading(false);
     }
+  };
+
+  // Status line / progress shown while the Kokoro voice loads or errors.
+  const renderVoiceStatus = () => {
+    if (prog?.phase === "error") {
+      return (
+        <span style={{ fontSize: "0.78rem", color: "#c2533b" }}>
+          voice error — using system voice ({prog.message.slice(0, 80)})
+        </span>
+      );
+    }
+    if (!voiceLoading) return null;
+    if (prog?.phase === "download") {
+      return (
+        <span style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "12rem" }}>
+          <span style={{ fontSize: "0.75rem", color: "#888" }}>
+            downloading voice {prog.loadedMB.toFixed(0)}/{prog.totalMB.toFixed(0)} MB
+            {" "}({Math.round(prog.pct * 100)}%)
+          </span>
+          <span style={{ height: 6, background: "var(--rule)", borderRadius: 3, overflow: "hidden" }}>
+            <span style={{ display: "block", height: "100%", width: `${Math.round(prog.pct * 100)}%`, background: "var(--accent)" }} />
+          </span>
+        </span>
+      );
+    }
+    return (
+      <span style={{ fontSize: "0.75rem", color: "#888" }}>
+        {prog?.phase === "generate" ? "synthesizing…" : "loading voice…"}
+      </span>
+    );
   };
 
   const reveal = () => {
@@ -157,13 +190,9 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
                 {voiceLoading ? "…" : "🔊"}
               </button>
             )}
-            {voiceLoading && (
-              <span style={{ fontSize: "0.75rem", color: "#999" }}>
-                loading voice…
-              </span>
-            )}
           </div>
         )}
+        {revealed && renderVoiceStatus()}
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>

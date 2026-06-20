@@ -8,6 +8,41 @@ import type { KokoroTTS } from "kokoro-js";
 const MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
 const VOICE = "bf_emma"; // British female, to match the Read Lexicon's RP basis
 
+export type Progress =
+  | { phase: "download"; pct: number; loadedMB: number; totalMB: number }
+  | { phase: "generate" }
+  | { phase: "ready" }
+  | { phase: "error"; message: string };
+
+const listeners = new Set<(p: Progress) => void>();
+export function onKokoroProgress(fn: (p: Progress) => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+const emit = (p: Progress) => listeners.forEach((f) => f(p));
+
+// Aggregate byte counts across the files transformers.js downloads, so the bar
+// reflects total progress rather than jumping per-file.
+const files = new Map<string, { loaded: number; total: number }>();
+function emitDownload() {
+  let loaded = 0;
+  let total = 0;
+  for (const f of files.values()) {
+    loaded += f.loaded;
+    total += f.total;
+  }
+  if (total > 0) {
+    emit({
+      phase: "download",
+      pct: Math.min(1, loaded / total),
+      loadedMB: loaded / 1e6,
+      totalMB: total / 1e6,
+    });
+  }
+}
+
 let ttsPromise: Promise<KokoroTTS> | null = null;
 let ctx: AudioContext | null = null;
 
@@ -28,28 +63,54 @@ export function unlockAudio() {
   if (c.state === "suspended") void c.resume();
 }
 
-/** Whether the model download/load has started (so the UI can show progress once). */
-export const kokoroStarted = () => ttsPromise !== null;
-
 function loadKokoro(): Promise<KokoroTTS> {
   if (!ttsPromise) {
     ttsPromise = import("kokoro-js").then(({ KokoroTTS }) =>
-      KokoroTTS.from_pretrained(MODEL, { dtype: "q8", device: "wasm" }),
+      KokoroTTS.from_pretrained(MODEL, {
+        dtype: "q8",
+        device: "wasm",
+        progress_callback: (x: {
+          status: string;
+          file?: string;
+          loaded?: number;
+          total?: number;
+        }) => {
+          if (!x.file) return;
+          if (x.status === "progress" || x.status === "download") {
+            files.set(x.file, {
+              loaded: x.loaded ?? 0,
+              total: x.total ?? 0,
+            });
+            emitDownload();
+          } else if (x.status === "done") {
+            const f = files.get(x.file);
+            if (f) f.loaded = f.total;
+            emitDownload();
+          }
+        },
+      }),
     );
   }
   return ttsPromise;
 }
 
 export async function speakKokoro(text: string): Promise<void> {
-  const c = audioContext();
-  if (c.state === "suspended") await c.resume();
-  const tts = await loadKokoro();
-  const audio = await tts.generate(text, { voice: VOICE });
-  const data = audio.audio as Float32Array;
-  const buffer = c.createBuffer(1, data.length, audio.sampling_rate);
-  buffer.getChannelData(0).set(data);
-  const src = c.createBufferSource();
-  src.buffer = buffer;
-  src.connect(c.destination);
-  src.start();
+  try {
+    const c = audioContext();
+    if (c.state === "suspended") await c.resume();
+    const tts = await loadKokoro();
+    emit({ phase: "generate" });
+    const audio = await tts.generate(text, { voice: VOICE });
+    const data = audio.audio as Float32Array;
+    const buffer = c.createBuffer(1, data.length, audio.sampling_rate);
+    buffer.getChannelData(0).set(data);
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    src.connect(c.destination);
+    src.start();
+    emit({ phase: "ready" });
+  } catch (e) {
+    emit({ phase: "error", message: e instanceof Error ? e.message : String(e) });
+    throw e;
+  }
 }

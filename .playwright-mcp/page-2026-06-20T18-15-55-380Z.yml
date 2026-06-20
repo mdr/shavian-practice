@@ -1,0 +1,15 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - button "Shavian Practice" [ref=e4] [cursor=pointer]:
+      - strong [ref=e5]: Shavian Practice
+    - generic [ref=e73]: › Lesson 1
+    - generic [ref=e6]:
+      - checkbox "finger" [ref=e7]
+      - text: finger
+  - generic [ref=e74]:
+    - generic [ref=e75]:
+      - generic [ref=e76]: "read this:"
+      - button "🔊 audio on" [ref=e77] [cursor=pointer]
+      - generic [ref=e78]: 1 / 12
+    - generic [ref=e80]: 𐑕𐑦𐑕𐑦
+    - button "Reveal" [ref=e83] [cursor=pointer]
