@@ -1,3 +1,8 @@
 # esbuild ships a native binary via a postinstall script; allow it to run.
+# The kokoro-js transitive deps below are Node-only backends; the browser build
+# uses onnxruntime-web (WASM), so their native build steps aren't needed.
 allowBuilds:
   esbuild: true
+  onnxruntime-node: false
+  protobufjs: false
+  sharp: false

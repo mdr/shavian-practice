@@ -3,6 +3,7 @@ import ShavianText from "./ShavianText.tsx";
 import type { Lesson, Word } from "./content.ts";
 import { practiceWords } from "./content.ts";
 import { speak, canSpeak } from "./speak.ts";
+import { speakKokoro, unlockAudio } from "./kokoro.ts";
 
 interface ReadModeProps {
   lesson: Lesson;
@@ -38,6 +39,7 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
   const [i, setI] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [tally, setTally] = useState({ got: 0, missed: 0 });
+  const [voiceLoading, setVoiceLoading] = useState(false);
   const [audioOn, setAudioOn] = useState(() => {
     try {
       return localStorage.getItem("shavian-practice.audio") !== "off";
@@ -85,10 +87,23 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
 
   const answers = homophones.get(word.shavian) ?? [word.english];
 
+  // homophones share pronunciation, so any spelling works
+  const playWord = async (text: string) => {
+    try {
+      setVoiceLoading(true);
+      await speakKokoro(text);
+    } catch {
+      speak(text); // fall back to the built-in voice if Kokoro fails
+    } finally {
+      setVoiceLoading(false);
+    }
+  };
+
   const reveal = () => {
     setRevealed(true);
-    // homophones share pronunciation, so any spelling works
-    if (audioOn) speak(answers[0]);
+    if (!audioOn) return;
+    unlockAudio(); // resume AudioContext within this tap (iOS requirement)
+    void playWord(answers[0]);
   };
 
   return (
@@ -131,15 +146,21 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
             <span style={{ fontSize: "1.6rem", color: "var(--ink)" }}>
               {answers.join(" / ")}
             </span>
-            {canSpeak() && audioOn && (
+            {audioOn && (
               <button
-                onClick={() => speak(answers[0])}
+                onClick={() => playWord(answers[0])}
+                disabled={voiceLoading}
                 title="Hear it again"
                 aria-label="Hear it again"
                 style={{ padding: "0.3rem 0.6rem" }}
               >
-                🔊
+                {voiceLoading ? "…" : "🔊"}
               </button>
+            )}
+            {voiceLoading && (
+              <span style={{ fontSize: "0.75rem", color: "#999" }}>
+                loading voice…
+              </span>
             )}
           </div>
         )}
