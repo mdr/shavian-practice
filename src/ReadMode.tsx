@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import ShavianText from "./ShavianText.tsx";
 import type { Lesson, Word } from "./content.ts";
 import { practiceWords } from "./content.ts";
+import { speak, canSpeak } from "./speak.ts";
 
 interface ReadModeProps {
   lesson: Lesson;
@@ -66,6 +67,11 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
 
   const answers = homophones.get(word.shavian) ?? [word.english];
 
+  const reveal = () => {
+    setRevealed(true);
+    speak(answers[0]); // homophones share pronunciation, so any spelling works
+  };
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem", padding: "0.75rem", minHeight: 0 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "1rem" }}>
@@ -92,8 +98,20 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
       >
         <ShavianText text={word.shavian} style={{ fontSize: "4rem", lineHeight: 1 }} />
         {revealed && (
-          <div style={{ fontSize: "1.6rem", color: "var(--ink)" }}>
-            {answers.join(" / ")}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <span style={{ fontSize: "1.6rem", color: "var(--ink)" }}>
+              {answers.join(" / ")}
+            </span>
+            {canSpeak() && (
+              <button
+                onClick={() => speak(answers[0])}
+                title="Hear it again"
+                aria-label="Hear it again"
+                style={{ padding: "0.3rem 0.6rem" }}
+              >
+                🔊
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -101,10 +119,7 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
         <span style={{ flex: 1 }} />
         {!revealed ? (
-          <button
-            onClick={() => setRevealed(true)}
-            style={{ borderColor: "var(--accent)" }}
-          >
+          <button onClick={reveal} style={{ borderColor: "var(--accent)" }}>
             Reveal
           </button>
         ) : (
