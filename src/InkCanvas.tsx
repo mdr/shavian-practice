@@ -218,33 +218,42 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
       ensureFont().then(() => setFontReady(true));
     }, []);
 
-    // Two-finger tap = undo (the iPadOS convention). Works in pen-only mode
-    // since touches never draw there; in finger mode a second finger cancels
-    // the nascent stroke so the tap doesn't leave a mark.
+    // Two-finger tap = undo (the iPadOS convention). Tracked via POINTER events
+    // counting only finger ("touch") pointers — never the Pencil. (The Pencil
+    // also emits touch events, so a TouchEvent-based count would spuriously read
+    // 2 between two quick pen strokes and cancel the second one.)
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      let active = false;
+      const fingers = new Set<number>();
       let start = 0;
-      const onStart = (e: TouchEvent) => {
-        if (e.touches.length === 2) {
-          active = true;
+      let fired = false;
+      const onDown = (e: PointerEvent) => {
+        if (e.pointerType !== "touch") return;
+        fingers.add(e.pointerId);
+        if (fingers.size === 2) {
           start = performance.now();
-          currentRef.current = null;
+          fired = false;
+          currentRef.current = null; // cancel any nascent finger stroke
           draw();
         }
       };
-      const onEnd = (e: TouchEvent) => {
-        if (active && e.touches.length === 0) {
-          if (performance.now() - start < 400) doUndo();
-          active = false;
+      const onUp = (e: PointerEvent) => {
+        if (e.pointerType !== "touch") return;
+        const had2 = fingers.size === 2;
+        fingers.delete(e.pointerId);
+        if (had2 && !fired && performance.now() - start < 400) {
+          fired = true;
+          doUndo();
         }
       };
-      canvas.addEventListener("touchstart", onStart, { passive: true });
-      canvas.addEventListener("touchend", onEnd, { passive: true });
+      canvas.addEventListener("pointerdown", onDown);
+      canvas.addEventListener("pointerup", onUp);
+      canvas.addEventListener("pointercancel", onUp);
       return () => {
-        canvas.removeEventListener("touchstart", onStart);
-        canvas.removeEventListener("touchend", onEnd);
+        canvas.removeEventListener("pointerdown", onDown);
+        canvas.removeEventListener("pointerup", onUp);
+        canvas.removeEventListener("pointercancel", onUp);
       };
     }, [doUndo, draw]);
 
