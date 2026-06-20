@@ -5,6 +5,7 @@ import { practiceWords } from "./content.ts";
 import { speak, canSpeak } from "./speak.ts";
 import {
   speakKokoro,
+  prefetchKokoro,
   unlockAudio,
   onKokoroProgress,
   isIOS,
@@ -58,6 +59,19 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
   });
 
   useEffect(() => onKokoroProgress(setProg), []);
+
+  // The word we'll speak for a card (homophones share a pronunciation).
+  const spokenOf = (w: Word) => (homophones.get(w.shavian) ?? [w.english])[0];
+
+  // Pre-synthesise the current word + the next couple while they're on screen,
+  // so Reveal plays an already-ready buffer. Desktop/Kokoro only.
+  useEffect(() => {
+    if (!useKokoro || !audioOn) return;
+    for (let k = i; k < Math.min(i + 3, words.length); k++) {
+      prefetchKokoro(spokenOf(words[k]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, useKokoro, audioOn, words]);
 
   const toggleAudio = () =>
     setAudioOn((on) => {
@@ -147,8 +161,8 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
   const reveal = () => {
     setRevealed(true);
     if (!audioOn) return;
-    unlockAudio(); // resume AudioContext within this tap (iOS requirement)
-    void playWord(answers[0]);
+    if (useKokoro) unlockAudio(); // resume the AudioContext within the gesture
+    void playWord(answers[0]); // synthesis runs in a worker, so it won't block
   };
 
   return (

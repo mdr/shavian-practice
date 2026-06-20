@@ -94,27 +94,59 @@ export function unlockAudio() {
 
 function loadKokoro(): Promise<KokoroTTS> {
   if (!ttsPromise) {
-    ttsPromise = import("kokoro-js").then(({ KokoroTTS }) =>
-      KokoroTTS.from_pretrained(MODEL, {
+    ttsPromise = (async () => {
+      // Run ORT inference in a Web Worker so synthesis doesn't block the main
+      // thread (desktop only — iOS never reaches here). Dynamic imports keep
+      // Transformers.js out of the initial bundle.
+      const { env } = await import("@huggingface/transformers");
+      const wasm = env.backends?.onnx?.wasm;
+      if (wasm) wasm.proxy = true;
+      const { KokoroTTS } = await import("kokoro-js");
+      return KokoroTTS.from_pretrained(MODEL, {
         dtype: "q8",
         device: "wasm",
         progress_callback,
-      }),
-    );
+      });
+    })();
   }
   return ttsPromise;
+}
+
+// Synthesised audio cached by word, so we can pre-render ahead of Reveal and
+// prefetch upcoming words. Playback just grabs the (usually ready) buffer.
+const audioCache = new Map<string, Promise<AudioBuffer>>();
+
+function prepare(text: string): Promise<AudioBuffer> {
+  let p = audioCache.get(text);
+  if (!p) {
+    p = (async () => {
+      const tts = await loadKokoro();
+      const audio = await tts.generate(text, { voice: VOICE });
+      const data = audio.audio as Float32Array;
+      const buffer = audioContext().createBuffer(
+        1,
+        data.length,
+        audio.sampling_rate,
+      );
+      buffer.getChannelData(0).set(data);
+      return buffer;
+    })();
+    audioCache.set(text, p);
+    p.catch(() => audioCache.delete(text)); // let it retry after a failure
+  }
+  return p;
+}
+
+/** Pre-render a word's audio in the background (e.g. while it's on screen). */
+export function prefetchKokoro(text: string): void {
+  if (text) void prepare(text).catch(() => {});
 }
 
 export async function speakKokoro(text: string): Promise<void> {
   try {
     const c = audioContext();
     if (c.state === "suspended") await c.resume();
-    const tts = await loadKokoro();
-    emit({ phase: "generate" });
-    const audio = await tts.generate(text, { voice: VOICE });
-    const data = audio.audio as Float32Array;
-    const buffer = c.createBuffer(1, data.length, audio.sampling_rate);
-    buffer.getChannelData(0).set(data);
+    const buffer = await prepare(text);
     const src = c.createBufferSource();
     src.buffer = buffer;
     src.connect(c.destination);
