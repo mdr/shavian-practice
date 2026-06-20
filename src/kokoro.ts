@@ -11,7 +11,7 @@
 import type { KokoroTTS } from "kokoro-js";
 
 const MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
-const VOICE = "bf_emma"; // British female, to match the Read Lexicon's RP basis
+const VOICE = "af_heart"; // Kokoro's default female voice (American)
 
 /** iOS/iPadOS (incl. iPadOS posing as macOS) — Kokoro WASM inference hangs here. */
 export function isIOS(): boolean {
