@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ShavianText from "./ShavianText.tsx";
 import type { Lesson, Word } from "./content.ts";
 import { practiceWords } from "./content.ts";
@@ -17,7 +17,14 @@ interface ReadModeProps {
   onDone: () => void;
 }
 
-const SESSION_SIZE = 12;
+function shuffle(a: Word[]): Word[] {
+  const r = [...a];
+  for (let k = r.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1));
+    [r[k], r[j]] = [r[j], r[k]];
+  }
+  return r;
+}
 
 export default function ReadMode({ lesson, onDone }: ReadModeProps) {
   const pool = useMemo(() => practiceWords(lesson), [lesson]);
@@ -34,18 +41,11 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
     return m;
   }, [pool]);
 
-  const words = useMemo<Word[]>(() => {
-    const a = [...pool];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a.slice(0, SESSION_SIZE);
-  }, [pool]);
-
+  // Endlessly-cycling shuffled deck: reshuffle and continue when it runs out.
+  const [deck, setDeck] = useState<Word[]>(() => shuffle(pool));
   const [i, setI] = useState(0);
+  const [count, setCount] = useState(1);
   const [revealed, setRevealed] = useState(false);
-  const [tally, setTally] = useState({ got: 0, missed: 0 });
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [prog, setProg] = useState<Progress | null>(null);
   // Kokoro's WASM inference hangs on iOS; use the system voice there.
@@ -67,49 +67,24 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
   // so Reveal plays an already-ready buffer. Desktop/Kokoro only.
   useEffect(() => {
     if (!useKokoro || !audioOn) return;
-    for (let k = i; k < Math.min(i + 3, words.length); k++) {
-      prefetchKokoro(spokenOf(words[k]));
+    for (let k = i; k < Math.min(i + 3, deck.length); k++) {
+      prefetchKokoro(spokenOf(deck[k]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, useKokoro, audioOn, words]);
+  }, [i, useKokoro, audioOn, deck]);
 
   const toggleAudio = () =>
     setAudioOn((on) => {
-      const next = !on;
+      const v = !on;
       try {
-        localStorage.setItem("shavian-practice.audio", next ? "on" : "off");
+        localStorage.setItem("shavian-practice.audio", v ? "on" : "off");
       } catch {
         /* storage may be unavailable */
       }
-      return next;
+      return v;
     });
 
-  const word = words[i];
-  const finished = i >= words.length;
-
-  const next = (got: boolean) => {
-    setTally((t) => ({
-      got: t.got + (got ? 1 : 0),
-      missed: t.missed + (got ? 0 : 1),
-    }));
-    setRevealed(false);
-    setI((n) => n + 1);
-  };
-
-  if (finished) {
-    return (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1rem", padding: "2rem" }}>
-        <h2>Session complete</h2>
-        <p style={{ fontSize: "1.2rem" }}>
-          {tally.got} ✓ · {tally.missed} ✗
-        </p>
-        <button onClick={onDone} style={{ borderColor: "var(--accent)" }}>
-          Back to lesson
-        </button>
-      </div>
-    );
-  }
-
+  const word = deck[i];
   const answers = homophones.get(word.shavian) ?? [word.english];
 
   // homophones share pronunciation, so any spelling works
@@ -127,6 +102,40 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
       setVoiceLoading(false);
     }
   };
+
+  const reveal = () => {
+    setRevealed(true);
+    if (!audioOn) return;
+    if (useKokoro) unlockAudio(); // resume the AudioContext within the gesture
+    void playWord(answers[0]); // synthesis runs in a worker, so it won't block
+  };
+
+  const next = () => {
+    setRevealed(false);
+    setCount((c) => c + 1);
+    if (i + 1 < deck.length) {
+      setI(i + 1);
+    } else {
+      setDeck(shuffle(pool));
+      setI(0);
+    }
+  };
+
+  // Space = reveal, then continue (the flashcard convention).
+  const spaceAction = useRef<() => void>(() => {});
+  spaceAction.current = () => (revealed ? next() : reveal());
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      const tag = (document.activeElement as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "BUTTON")
+        return; // let focused controls handle Space themselves
+      e.preventDefault();
+      spaceAction.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Status line / progress shown while the Kokoro voice loads or errors.
   const renderVoiceStatus = () => {
@@ -158,13 +167,6 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
     );
   };
 
-  const reveal = () => {
-    setRevealed(true);
-    if (!audioOn) return;
-    if (useKokoro) unlockAudio(); // resume the AudioContext within the gesture
-    void playWord(answers[0]); // synthesis runs in a worker, so it won't block
-  };
-
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem", padding: "0.75rem", minHeight: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -179,9 +181,7 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
             {audioOn ? "🔊 audio on" : "🔇 audio off"}
           </button>
         )}
-        <span style={{ color: "#999", fontSize: "0.85rem" }}>
-          {i + 1} / {words.length}
-        </span>
+        <span style={{ color: "#999", fontSize: "0.85rem" }}>#{count}</span>
       </div>
 
       <div
@@ -222,18 +222,16 @@ export default function ReadMode({ lesson, onDone }: ReadModeProps) {
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <button onClick={onDone}>Done</button>
         <span style={{ flex: 1 }} />
         {!revealed ? (
           <button onClick={reveal} style={{ borderColor: "var(--accent)" }}>
             Reveal
           </button>
         ) : (
-          <>
-            <button onClick={() => next(false)}>Missed ✗</button>
-            <button onClick={() => next(true)} style={{ borderColor: "var(--accent)" }}>
-              Got it ✓
-            </button>
-          </>
+          <button onClick={next} style={{ borderColor: "var(--accent)" }}>
+            Continue ›
+          </button>
         )}
       </div>
     </div>

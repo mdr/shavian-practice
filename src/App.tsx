@@ -88,7 +88,6 @@ export default function App() {
           mode={route.mode}
           onMode={(mode) => navigate({ name: "lesson", id: lesson.id, mode })}
           onTraced={() => setProgress((p) => P.markTraced(p, lesson.id))}
-          onRecall={(got) => setProgress((p) => P.recordRecall(p, lesson.id, got))}
         />
       )}
     </>

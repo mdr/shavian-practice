@@ -31,7 +31,6 @@ interface LessonProps {
   mode: Mode;
   onMode: (mode: Mode) => void;
   onTraced: () => void;
-  onRecall: (got: boolean) => void;
 }
 
 /** Render *emphasis* in the hand-written mnemonics without a markdown dep. */
@@ -55,11 +54,11 @@ export default function Lesson({
   mode,
   onMode,
   onTraced,
-  onRecall,
 }: LessonProps) {
   if (mode === "trace") {
     return (
       <TraceMode
+        key={lesson.id}
         lesson={lesson}
         allowTouch={allowTouch}
         onDone={() => {
@@ -73,16 +72,18 @@ export default function Lesson({
   if (mode === "recall") {
     return (
       <RecallMode
+        key={lesson.id}
         lesson={lesson}
         allowTouch={allowTouch}
-        onRecord={onRecall}
         onDone={() => onMode("intro")}
       />
     );
   }
 
   if (mode === "read") {
-    return <ReadMode lesson={lesson} onDone={() => onMode("intro")} />;
+    return (
+      <ReadMode key={lesson.id} lesson={lesson} onDone={() => onMode("intro")} />
+    );
   }
 
   return (
@@ -139,7 +140,7 @@ export default function Lesson({
           onClick={() => onMode("recall")}
           style={{ borderColor: "var(--accent)" }}
         >
-          🧠 Practice words
+          ✍️ Write words
         </button>
         <button
           onClick={() => onMode("read")}
