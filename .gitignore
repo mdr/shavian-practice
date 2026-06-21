@@ -9,3 +9,6 @@ src/content/lessons.json
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# Playwright MCP scratch output
+.playwright-mcp/
