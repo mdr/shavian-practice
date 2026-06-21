@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "./fonts.css";
-import { getLesson } from "./content.ts";
+import { getLesson, lessons } from "./content.ts";
 import * as P from "./progress.ts";
 import { useHashRoute } from "./route.ts";
 import Home from "./Home.tsx";
@@ -36,7 +36,35 @@ export default function App() {
         >
           <strong>Shavian Practice</strong>
         </button>
-        {lesson && <span style={{ color: "#999" }}>› {lesson.title}</span>}
+        {lesson && (
+          <>
+            <span style={{ color: "#999" }}>›</span>
+            <select
+              value={lesson.id}
+              onChange={(e) =>
+                navigate({
+                  name: "lesson",
+                  id: Number(e.target.value),
+                  mode: route.name === "lesson" ? route.mode : "intro",
+                })
+              }
+              style={{
+                font: "inherit",
+                padding: "0.25rem 0.4rem",
+                border: "1px solid var(--rule-strong)",
+                borderRadius: 6,
+                background: "white",
+                color: "var(--ink)",
+              }}
+            >
+              {lessons.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.title}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <span style={{ flex: 1 }} />
         <label style={{ fontSize: "0.85rem", display: "flex", gap: "0.35rem", alignItems: "center" }}>
           <input
