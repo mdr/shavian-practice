@@ -4,6 +4,7 @@ import type { Mode } from "./route.ts";
 import TraceMode from "./TraceMode.tsx";
 import RecallMode from "./RecallMode.tsx";
 import ReadMode from "./ReadMode.tsx";
+import SayMode from "./SayMode.tsx";
 import ShavianText from "./ShavianText.tsx";
 import { CLASS_COLOR } from "./letterClass.ts";
 
@@ -86,6 +87,12 @@ export default function Lesson({
     );
   }
 
+  if (mode === "say") {
+    return (
+      <SayMode key={lesson.id} lesson={lesson} onDone={() => onMode("intro")} />
+    );
+  }
+
   return (
     <main style={{ flex: 1, overflow: "auto", padding: "1rem" }}>
       <h2 style={{ marginTop: 0, marginBottom: "0.5rem" }}>{lesson.title}</h2>
@@ -147,6 +154,12 @@ export default function Lesson({
           style={{ borderColor: "var(--accent)" }}
         >
           📖 Read words
+        </button>
+        <button
+          onClick={() => onMode("say")}
+          style={{ borderColor: "var(--accent)" }}
+        >
+          🎤 Say words
         </button>
       </div>
     </main>

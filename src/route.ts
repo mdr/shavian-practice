@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type Mode = "intro" | "trace" | "recall" | "read";
+export type Mode = "intro" | "trace" | "recall" | "read" | "say";
 
 export type Route =
   | { name: "home" }
@@ -11,9 +11,10 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === "lesson" && parts[1]) {
     const id = Number.parseInt(parts[1], 10);
     if (!Number.isNaN(id)) {
+      const m = parts[2];
       const mode: Mode =
-        parts[2] === "trace" || parts[2] === "recall" || parts[2] === "read"
-          ? parts[2]
+        m === "trace" || m === "recall" || m === "read" || m === "say"
+          ? m
           : "intro";
       return { name: "lesson", id, mode };
     }
