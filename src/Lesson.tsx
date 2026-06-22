@@ -163,6 +163,17 @@ export default function Lesson({
           🎤 Say words
         </button>
       </div>
+
+      <p style={{ marginTop: "1.5rem", fontSize: "0.9rem" }}>
+        <a
+          href={`https://shavian.school/?c=${lesson.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--accent)" }}
+        >
+          Read {lesson.title} on shavian.school ↗
+        </a>
+      </p>
     </main>
   );
 }
