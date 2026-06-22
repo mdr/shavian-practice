@@ -7,6 +7,13 @@ import { useColour, setColour } from "./colour.ts";
 import Home from "./Home.tsx";
 import Lesson from "./Lesson.tsx";
 
+const MODE_LABEL: Record<string, string> = {
+  trace: "Trace",
+  recall: "Write",
+  read: "Read",
+  say: "Say",
+};
+
 export default function App() {
   const [route, navigate] = useHashRoute();
   const [progress, setProgress] = useState<P.Progress>(() => P.load());
@@ -40,30 +47,41 @@ export default function App() {
         {lesson && (
           <>
             <span style={{ color: "#999" }}>›</span>
-            <select
-              value={lesson.id}
-              onChange={(e) =>
-                navigate({
-                  name: "lesson",
-                  id: Number(e.target.value),
-                  mode: route.name === "lesson" ? route.mode : "intro",
-                })
-              }
-              style={{
-                font: "inherit",
-                padding: "0.25rem 0.4rem",
-                border: "1px solid var(--rule-strong)",
-                borderRadius: 6,
-                background: "white",
-                color: "var(--ink)",
-              }}
-            >
-              {lessons.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.title}
-                </option>
-              ))}
-            </select>
+            {route.name === "lesson" && route.mode !== "intro" ? (
+              // In a practice mode: lesson crumb navigates "up" to the intro.
+              <>
+                <button
+                  onClick={() => navigate({ name: "lesson", id: lesson.id, mode: "intro" })}
+                  style={{ border: "none", background: "none", padding: 0, cursor: "pointer", color: "var(--accent)" }}
+                >
+                  {lesson.title}
+                </button>
+                <span style={{ color: "#999" }}>›</span>
+                <span style={{ color: "#999" }}>{MODE_LABEL[route.mode] ?? ""}</span>
+              </>
+            ) : (
+              // On the lesson intro: dropdown to switch lessons.
+              <select
+                value={lesson.id}
+                onChange={(e) =>
+                  navigate({ name: "lesson", id: Number(e.target.value), mode: "intro" })
+                }
+                style={{
+                  font: "inherit",
+                  padding: "0.25rem 0.4rem",
+                  border: "1px solid var(--rule-strong)",
+                  borderRadius: 6,
+                  background: "white",
+                  color: "var(--ink)",
+                }}
+              >
+                {lessons.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.title}
+                  </option>
+                ))}
+              </select>
+            )}
           </>
         )}
         <span style={{ flex: 1 }} />
