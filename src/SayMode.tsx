@@ -156,10 +156,11 @@ export default function SayMode({ lesson, onDone }: SayModeProps) {
       const utter = finals[consumedRef.current];
       consumedRef.current++;
       const toks = normalize(utter).split(" ").filter(Boolean);
+      if (toks.length === 0) continue; // empty/noise utterance — ignore, don't fail
       const A = acceptable(deckRef.current[iRef.current]);
       const matched = toks.find((t) => A.has(numCanon(t)));
       if (matched) flashHit(matched);
-      else missDwell(normalize(utter));
+      else missDwell(toks.join(" "));
       return;
     }
 
