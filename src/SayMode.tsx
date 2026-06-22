@@ -32,6 +32,18 @@ const normalize = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+// STT often returns numerals for number words ("six" -> "6"). Canonicalise both
+// to the digit form so they match either way.
+const NUM: Record<string, string> = {
+  zero: "0", one: "1", two: "2", three: "3", four: "4", five: "5", six: "6",
+  seven: "7", eight: "8", nine: "9", ten: "10", eleven: "11", twelve: "12",
+  thirteen: "13", fourteen: "14", fifteen: "15", sixteen: "16", seventeen: "17",
+  eighteen: "18", nineteen: "19", twenty: "20", thirty: "30", forty: "40",
+  fifty: "50", sixty: "60", seventy: "70", eighty: "80", ninety: "90",
+  hundred: "100", thousand: "1000",
+};
+const numCanon = (t: string) => NUM[t] ?? t;
+
 type Feedback =
   | { kind: "hit"; heard: string }
   | { kind: "miss"; heard: string; answer: string };
@@ -64,14 +76,14 @@ export default function SayMode({ lesson, onDone }: SayModeProps) {
   deckRef.current = deck;
   const iRef = useRef(0);
   const cursorRef = useRef(0); // committed final tokens already scored
-  const creditedInterimRef = useRef(false); // current utterance already ✓'d via interim — skip its finalisation
-  const liveFinalCountRef = useRef(0); // final-token count seen (tracked even while dwelling)
-  const busyRef = useRef(false); // dwelling on a miss
+  const pendingSkipRef = useRef(0); // finalisations of interim-✓'d utterances to skip
+  const busyRef = useRef(false); // showing a flash
   const listeningRef = useRef(false);
   const recRef = useRef<{ start: () => void; stop: () => void; abort: () => void } | null>(null);
 
   const answersOf = (w: Word) => homophones.get(w.shavian) ?? [w.english];
-  const acceptable = (w: Word) => new Set(answersOf(w).map(normalize));
+  const acceptable = (w: Word) =>
+    new Set(answersOf(w).map((x) => numCanon(normalize(x))));
 
   const advance = () => {
     const ni = iRef.current + 1;
@@ -87,27 +99,29 @@ export default function SayMode({ lesson, onDone }: SayModeProps) {
     }
   };
 
-  const flashHit = (heard: string) => {
-    setFeedback({ kind: "hit", heard });
-    setTally((t) => ({ correct: t.correct + 1, total: t.total + 1 }));
+  // Both hit and miss freeze on the *current* word while the flash shows, then
+  // advance — so the next word never appears under the flash.
+  const flashAndAdvance = (fb: Feedback, ms: number) => {
+    busyRef.current = true;
+    setFeedback(fb);
     setTranscript("");
-    window.setTimeout(() => setFeedback((f) => (f?.kind === "hit" ? null : f)), 500);
-    advance();
+    window.setTimeout(() => {
+      setFeedback(null);
+      setTranscript("");
+      busyRef.current = false;
+      advance();
+    }, ms);
+  };
+
+  const flashHit = (heard: string) => {
+    setTally((t) => ({ correct: t.correct + 1, total: t.total + 1 }));
+    flashAndAdvance({ kind: "hit", heard }, 1100);
   };
 
   const missDwell = (heard: string) => {
     const w = deckRef.current[iRef.current];
-    busyRef.current = true; // freeze scoring while the answer is shown
     setTally((t) => ({ correct: t.correct, total: t.total + 1 }));
-    setFeedback({ kind: "miss", heard, answer: answersOf(w).join(" / ") });
-    window.setTimeout(() => {
-      setFeedback(null);
-      setTranscript("");
-      cursorRef.current = liveFinalCountRef.current; // discard anything said during the dwell
-      creditedInterimRef.current = false;
-      busyRef.current = false;
-      advance();
-    }, 1500);
+    flashAndAdvance({ kind: "miss", heard, answer: answersOf(w).join(" / ") }, 1500);
   };
 
   const handleResult = (event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => {
@@ -121,44 +135,34 @@ export default function SayMode({ lesson, onDone }: SayModeProps) {
         interim += " " + r[0].transcript;
       }
     }
-    liveFinalCountRef.current = finalToks.length; // track even while dwelling
-    if (busyRef.current) return;
+    if (busyRef.current) return; // finals just accumulate; consumed once the flash ends
 
     const interimToks = normalize(interim).split(" ").filter(Boolean);
-    // While a credited utterance is still finalising, its interim belongs to the
-    // *previous* word — don't show it on the new card.
-    setTranscript(
-      creditedInterimRef.current
-        ? ""
-        : [...finalToks.slice(cursorRef.current), ...interimToks].join(" "),
-    );
+    // Hide the live transcript while a previous utterance is still finalising
+    // (its interim belongs to the prior word, not the current one).
+    setTranscript(pendingSkipRef.current > 0 ? "" : interimToks.join(" "));
 
-    // Score each committed final token in order — one per word.
+    // Score the first un-skipped committed final token against the current word.
     while (cursorRef.current < finalToks.length) {
-      if (creditedInterimRef.current) {
-        // this utterance was already ✓'d on its interim — consume its finalisation
-        creditedInterimRef.current = false;
+      if (pendingSkipRef.current > 0) {
+        pendingSkipRef.current--;
         cursorRef.current++;
         continue;
       }
       const tok = finalToks[cursorRef.current];
       cursorRef.current++;
-      if (acceptable(deckRef.current[iRef.current]).has(tok)) {
-        flashHit(tok);
-      } else {
-        missDwell(tok); // begins the reveal; stop processing this event
-        return;
-      }
+      if (acceptable(deckRef.current[iRef.current]).has(numCanon(tok))) flashHit(tok);
+      else missDwell(tok);
+      return;
     }
 
-    // Instant ✓ on the live interim, then skip that utterance when it finalises.
-    if (!creditedInterimRef.current) {
-      const A = acceptable(deckRef.current[iRef.current]);
-      const match = interimToks.find((t) => A.has(t));
-      if (match) {
-        flashHit(match);
-        creditedInterimRef.current = true;
-      }
+    // Otherwise ✓ instantly the moment the live interim matches; mark its
+    // eventual finalisation to be skipped (whenever it arrives).
+    const A = acceptable(deckRef.current[iRef.current]);
+    const match = interimToks.find((t) => A.has(numCanon(t)));
+    if (match) {
+      pendingSkipRef.current++;
+      flashHit(match);
     }
   };
 
