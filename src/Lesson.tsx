@@ -7,6 +7,7 @@ import ReadMode from "./ReadMode.tsx";
 import SayMode from "./SayMode.tsx";
 import ShavianText from "./ShavianText.tsx";
 import { CLASS_COLOR } from "./letterClass.ts";
+import { useColour } from "./colour.ts";
 
 function ClassLegend() {
   const items: [string, "tall" | "deep" | "short"][] = [
@@ -96,7 +97,7 @@ export default function Lesson({
   return (
     <main style={{ flex: 1, overflow: "auto", padding: "1rem" }}>
       <h2 style={{ marginTop: 0, marginBottom: "0.5rem" }}>{lesson.title}</h2>
-      <ClassLegend />
+      {useColour() && <ClassLegend />}
 
       <div
         style={{

@@ -3,6 +3,7 @@ import "./fonts.css";
 import { getLesson, lessons } from "./content.ts";
 import * as P from "./progress.ts";
 import { useHashRoute } from "./route.ts";
+import { useColour, setColour } from "./colour.ts";
 import Home from "./Home.tsx";
 import Lesson from "./Lesson.tsx";
 
@@ -66,6 +67,14 @@ export default function App() {
           </>
         )}
         <span style={{ flex: 1 }} />
+        <label style={{ fontSize: "0.85rem", display: "flex", gap: "0.35rem", alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={useColour()}
+            onChange={(e) => setColour(e.target.checked)}
+          />
+          colour
+        </label>
         <label style={{ fontSize: "0.85rem", display: "flex", gap: "0.35rem", alignItems: "center" }}>
           <input
             type="checkbox"

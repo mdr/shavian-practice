@@ -9,6 +9,7 @@ import {
 } from "react";
 import { getStroke } from "perfect-freehand";
 import { classOf, CLASS_COLOR } from "./letterClass.ts";
+import { useColour } from "./colour.ts";
 
 export interface InkCanvasHandle {
   undo: () => void;
@@ -73,6 +74,7 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
     const currentRef = useRef<Point[] | null>(null);
     const sizeRef = useRef({ w: 0, h: 0 });
     const [fontReady, setFontReady] = useState(false);
+    const colour = useColour();
 
     const draw = useCallback(() => {
       const canvas = canvasRef.current;
@@ -152,13 +154,14 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
         ctx.font = `${fontSize}px ${SHAVIAN_FONT}`;
         ctx.textBaseline = "alphabetic";
         ctx.globalAlpha = 0.32;
+        const ghostInk = styles.getPropertyValue("--ink").trim() || "#1a1a1a";
         const margin = w * 0.04;
         const glyphs = Array.from(ghost);
 
         const drawWord = (startX: number) => {
           let x = startX;
           for (const g of glyphs) {
-            ctx.fillStyle = CLASS_COLOR[classOf(g)];
+            ctx.fillStyle = colour ? CLASS_COLOR[classOf(g)] : ghostInk;
             ctx.fillText(g, x, baseline);
             x += ctx.measureText(g).width;
           }
@@ -183,7 +186,7 @@ const InkCanvas = forwardRef<InkCanvasHandle, InkCanvasProps>(
       for (const stroke of all) {
         ctx.fill(outlineToPath2D(getStroke(stroke, STROKE_OPTIONS)));
       }
-    }, [ghost, ghostRepeat, fontReady]);
+    }, [ghost, ghostRepeat, fontReady, colour]);
 
     const resize = useCallback(() => {
       const canvas = canvasRef.current;
