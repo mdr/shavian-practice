@@ -18,6 +18,8 @@ export interface NewLetter {
 export interface Word {
   english: string;
   shavian: string;
+  /** Other lexicon words with the same Shavian spelling (homophones). */
+  homophones?: string[];
 }
 
 export interface Lesson {

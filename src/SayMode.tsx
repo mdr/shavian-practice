@@ -75,15 +75,21 @@ export default function SayMode({ lesson, onDone }: SayModeProps) {
   const deckRef = useRef(deck);
   deckRef.current = deck;
   const iRef = useRef(0);
-  const cursorRef = useRef(0); // committed final tokens already scored
-  const pendingSkipRef = useRef(0); // finalisations of interim-✓'d utterances to skip
+  const consumedRef = useRef(0); // final results (utterances) already scored
+  const pendingSkipRef = useRef(0); // results to skip (interim-✓'d utterances)
   const busyRef = useRef(false); // showing a flash
   const listeningRef = useRef(false);
   const recRef = useRef<{ start: () => void; stop: () => void; abort: () => void } | null>(null);
 
   const answersOf = (w: Word) => homophones.get(w.shavian) ?? [w.english];
+  // Accept the word itself, its in-lesson homophones, and any lexicon homophone
+  // (same Shavian spelling) — the recogniser may return any of them.
   const acceptable = (w: Word) =>
-    new Set(answersOf(w).map((x) => numCanon(normalize(x))));
+    new Set(
+      [w.english, ...answersOf(w), ...(w.homophones ?? [])].map((x) =>
+        numCanon(normalize(x)),
+      ),
+    );
 
   const advance = () => {
     const ni = iRef.current + 1;
@@ -120,44 +126,45 @@ export default function SayMode({ lesson, onDone }: SayModeProps) {
 
   const missDwell = (heard: string) => {
     const w = deckRef.current[iRef.current];
+    const shown = heard.split(" ").slice(0, 6).join(" "); // cap a run-on sentence
     setTally((t) => ({ correct: t.correct, total: t.total + 1 }));
-    flashAndAdvance({ kind: "miss", heard, answer: answersOf(w).join(" / ") }, 1500);
+    flashAndAdvance({ kind: "miss", heard: shown, answer: answersOf(w).join(" / ") }, 1500);
   };
 
   const handleResult = (event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => {
-    const finalToks: string[] = [];
+    const finals: string[] = []; // one entry per finalised utterance
     let interim = "";
     for (let k = 0; k < event.results.length; k++) {
       const r = event.results[k];
-      if (r.isFinal) {
-        for (const t of normalize(r[0].transcript).split(" ")) if (t) finalToks.push(t);
-      } else {
-        interim += " " + r[0].transcript;
-      }
+      if (r.isFinal) finals.push(r[0].transcript);
+      else interim += " " + r[0].transcript;
     }
     if (busyRef.current) return; // finals just accumulate; consumed once the flash ends
 
     const interimToks = normalize(interim).split(" ").filter(Boolean);
-    // Hide the live transcript while a previous utterance is still finalising
-    // (its interim belongs to the prior word, not the current one).
-    setTranscript(pendingSkipRef.current > 0 ? "" : interimToks.join(" "));
+    // Hide the live transcript while a previous utterance is still finalising.
+    setTranscript(pendingSkipRef.current > 0 ? "" : interim.trim());
 
-    // Score the first un-skipped committed final token against the current word.
-    while (cursorRef.current < finalToks.length) {
+    // Each finalised utterance is ONE attempt for the current word — a whole
+    // sentence is consumed at once, never queued across later words.
+    while (consumedRef.current < finals.length) {
       if (pendingSkipRef.current > 0) {
         pendingSkipRef.current--;
-        cursorRef.current++;
+        consumedRef.current++;
         continue;
       }
-      const tok = finalToks[cursorRef.current];
-      cursorRef.current++;
-      if (acceptable(deckRef.current[iRef.current]).has(numCanon(tok))) flashHit(tok);
-      else missDwell(tok);
+      const utter = finals[consumedRef.current];
+      consumedRef.current++;
+      const toks = normalize(utter).split(" ").filter(Boolean);
+      const A = acceptable(deckRef.current[iRef.current]);
+      const matched = toks.find((t) => A.has(numCanon(t)));
+      if (matched) flashHit(matched);
+      else missDwell(normalize(utter));
       return;
     }
 
-    // Otherwise ✓ instantly the moment the live interim matches; mark its
-    // eventual finalisation to be skipped (whenever it arrives).
+    // Otherwise ✓ instantly the moment the live interim matches; mark the whole
+    // utterance to be skipped when it finalises.
     const A = acceptable(deckRef.current[iRef.current]);
     const match = interimToks.find((t) => A.has(numCanon(t)));
     if (match) {
