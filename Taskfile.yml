@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  flake-update:
+    desc: Update the Nix flake inputs (flake.lock)
+    cmds:
+      - nix flake update

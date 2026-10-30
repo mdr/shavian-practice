@@ -6,8 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         # ngrok is proprietary, so this package set permits unfree packages.
         pkgs = import nixpkgs {
@@ -21,11 +27,15 @@
             pkgs.nodejs_22
             pkgs.pnpm
             pkgs.ngrok
+            pkgs.go-task
           ];
 
           shellHook = ''
-            echo "shavian-practice dev shell — node $(node -v), pnpm $(pnpm -v), ngrok $(ngrok --version | head -1)"
+            echo "shavian-practice dev shell: node, pnpm, ngrok, task"
           '';
         };
-      });
+
+        formatter = pkgs.nixfmt;
+      }
+    );
 }
